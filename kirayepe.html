@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeBuddy</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .dropdown-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+        .search-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .loader, .stock-loader {
+            display: none;
+            margin: 20px auto;
+        }
+        .stock-container {
+            margin: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stock-item {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+        }
+        .stock-item img {
+            width: 100%;
+            max-width: 300px;
+            height: auto;
+            border-radius: 4px;
+        }
+        .stock-loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Stock Data Viewer</h1>
+        <div class="dropdown-container">
+            <select id="dropdown">
+                <option value="gap_up">Gap Up</option>
+                <option value="gap_down">Gap Down</option>
+                <option value="meets_criteria">Rising Moving Average</option>
+            </select>
+            <button class="search-button" onclick="performSearch()">Search</button>
+        </div>
+        <div class="loader" id="loader">
+            <lottie-player 
+                src="https://lottie.host/e3f2f6c7-e731-496d-a649-f4cb7cef64a3/TrpFWLVV6K.json"  
+                background="transparent"  
+                speed="1"  
+                style="width: 300px; height: 300px;"  
+                loop  
+                autoplay>
+            </lottie-player>
+        </div>
+        <div id="stockContainer" class="stock-container"></div>
+    </div>
+
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <script>
+        function performSearch() {
+            const dropdown = document.getElementById('dropdown');
+            const selectedOption = dropdown.options[dropdown.selectedIndex].value;
+
+            showLoader();
+
+            setTimeout(() => {
+                loadDataAndGenerateImages(selectedOption, 'stockContainer');
+            }, 5000); // 5-second delay
+        }
+
+        function showLoader() {
+            document.getElementById('loader').style.display = 'block';
+        }
+
+        function hideLoader() {
+            document.getElementById('loader').style.display = 'none';
+        }
+
+        function loadDataAndGenerateImages(stockType, elementId) {
+            fetch(`https://deepak789.pythonanywhere.com/api/stocks/${stockType}`)
+                .then(response => response.json())
+                .then(stocks => {
+                    const container = document.getElementById(elementId);
+                    container.innerHTML = ''; // Clear previous content
+                    if (stocks.length === 0) {
+                        container.innerHTML = '<p>No data available.</p>';
+                    } else {
+                        stocks.forEach(stock => {
+                            const stockDiv = document.createElement('div');
+                            stockDiv.className = 'stock-item';
+                            const stockLoader = document.createElement('div');
+                            stockLoader.className = 'stock-loader';
+                            stockLoader.innerHTML = '<lottie-player src="https://lottie.host/e3f2f6c7-e731-496d-a649-f4cb7cef64a3/TrpFWLVV6K.json" background="transparent" speed="1" style="width: 100px; height: 100px;" loop autoplay></lottie-player>';
+                            stockDiv.appendChild(stockLoader);
+                            container.appendChild(stockDiv);
+
+                            generateImage(stock, () => {
+                                const imageUrl = `https://deepak789.pythonanywhere.com/static/${stock}_plot.png`;
+                                stockLoader.style.display = 'none'; // Hide the loader when the image is ready
+                                stockDiv.innerHTML = `
+                                    <h4>${stock}</h4>
+                                    <a href="${imageUrl}" target="_blank">
+                                        <img src="${imageUrl}" alt="Chart for ${stock}" onError="this.src='https://deepak789.pythonanywhere.com/static/placeholder.png';">
+                                    </a>
+                                `;
+                            });
+                        });
+                    }
+                    hideLoader();
+                })
+                .catch(error => {
+                    console.error('Error fetching stock data:', error);
+                    const container = document.getElementById(elementId);
+                    container.innerHTML = `<p>Error loading data: ${error.message}</p>`;
+                    hideLoader();
+                });
+        }
+
+        function generateImage(stock, callback) {
+            fetch(`https://deepak789.pythonanywhere.com/plot/${stock}`)
+                .then(response => {
+                    if (response.ok) {
+                        console.log(`Image generated for ${stock}`);
+                        callback();
+                    } else {
+                        console.log(`Failed to generate image for ${stock}`);
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error generating image for ${stock}:`, error);
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial actions if needed
+        });
+    </script>
+</body>
+</html>
